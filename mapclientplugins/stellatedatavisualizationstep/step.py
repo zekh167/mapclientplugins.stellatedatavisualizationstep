@@ -3,12 +3,15 @@
 MAP Client Plugin Step
 """
 import json
+import os
 
 from PySide import QtGui
 
 from mapclient.mountpoints.workflowstep import WorkflowStepMountPoint
 from mapclientplugins.stellatedatavisualizationstep.configuredialog import ConfigureDialog
 
+from .view.view import View
+from .model.master import MasterModel
 
 class StellateDataVisualizationStep(WorkflowStepMountPoint):
     """
@@ -25,20 +28,23 @@ class StellateDataVisualizationStep(WorkflowStepMountPoint):
         # Ports:
         self.addPort(('http://physiomeproject.org/workflow/1.0/rdf-schema#port',
                       'http://physiomeproject.org/workflow/1.0/rdf-schema#uses',
-                      ''))
-        self.addPort(('http://physiomeproject.org/workflow/1.0/rdf-schema#port',
-                      'http://physiomeproject.org/workflow/1.0/rdf-schema#uses',
-                      '<not-set>'))
-        self.addPort(('http://physiomeproject.org/workflow/1.0/rdf-schema#port',
-                      'http://physiomeproject.org/workflow/1.0/rdf-schema#uses',
-                      '<not-set>'))
+                      'http://physiomeproject.org/workflow/1.0/rdf-schema#file_location'))
+        # self.addPort(('http://physiomeproject.org/workflow/1.0/rdf-schema#port',
+        #               'http://physiomeproject.org/workflow/1.0/rdf-schema#uses',
+        #               '<not-set>'))
+        # self.addPort(('http://physiomeproject.org/workflow/1.0/rdf-schema#port',
+        #               'http://physiomeproject.org/workflow/1.0/rdf-schema#uses',
+        #               '<not-set>'))
         # Port data:
-        self._portData0 = None # 
-        self._portData1 = None # <not-set>
-        self._portData2 = None # <not-set>
+        self._cubeScaffold = None # mesh
+        # self._portData1 = None # <not-set>
+        # self._portData2 = None # <not-set>
         # Config:
         self._config = {}
         self._config['identifier'] = ''
+
+        self._view = None
+        self._model = None
 
     def execute(self):
         """
@@ -47,7 +53,34 @@ class StellateDataVisualizationStep(WorkflowStepMountPoint):
         may be connected up to a button in a widget for example.
         """
         # Put your execute step code here before calling the '_doneExecution' method.
+
+        all_settings = {}
+        try:
+            with open(self._getSettingsFileName()) as f:
+                all_settings = json.loads(f.read())
+        except EnvironmentError:
+            pass
+
+        self._model = MasterModel(self._cubeScaffold)
+        self._view = View(self._model)
+        if 'view' in all_settings:
+            self._view.set_settings(all_settings['view'])
+
+        self._view.register_done_callback(self._interactionDone)
+        self._setCurrentWidget(self._view)
+
+    def _interactionDone(self):
+        all_settings = {'view': self._view.get_settings()}
+        settings_in_string_form = json.dumps(all_settings, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        with open(self._getSettingsFileName(), 'w') as f:
+            f.write(settings_in_string_form)
+
+        self._view = None
         self._doneExecution()
+
+    def _getSettingsFileName(self):
+        return os.path.join(self._location, self._config['identifier'] + '.settings')
+
 
     def setPortData(self, index, dataIn):
         """
@@ -58,12 +91,12 @@ class StellateDataVisualizationStep(WorkflowStepMountPoint):
         :param index: Index of the port to return.
         :param dataIn: The data to set for the port at the given index.
         """
-        if index == 0:
-            self._portData0 = dataIn # 
-        elif index == 1:
-            self._portData1 = dataIn # <not-set>
-        elif index == 2:
-            self._portData2 = dataIn # <not-set>
+        # if index == 0:
+        self._cubeScaffold = dataIn #
+        # elif index == 1:
+        #     self._portData1 = dataIn # <not-set>
+        # elif index == 2:
+        #     self._portData2 = dataIn # <not-set>
 
     def configure(self):
         """

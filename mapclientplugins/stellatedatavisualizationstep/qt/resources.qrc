@@ -1,0 +1,6 @@
+
+<RCC>
+  <qresource prefix="stellatedatavisualizationstep">
+    <file>images/registration.png</file>
+  </qresource>
+</RCC>
